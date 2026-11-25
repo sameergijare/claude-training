@@ -59,12 +59,13 @@ Then run this GraphQL query to fetch the latest commit SHA, prior review commits
 
 ```bash
 gh api graphql -f query='
-  query($owner: String!, $repo: String!, $pr: Int!) {
+  query($owner: String!, $repo: String!, $pr: Int!, $endCursor: String) {
+    viewer { login }
     repository(owner: $owner, name: $repo) {
       pullRequest(number: $pr) {
         headRefOid
         baseRefOid
-        reviews(last: 15) {
+        reviews(last: 50) {
           nodes {
             author { login }
             state
@@ -72,12 +73,14 @@ gh api graphql -f query='
             submittedAt
           }
         }
-        reviewThreads(first: 100) {
+        reviewThreads(first: 100, after: $endCursor) {
+          pageInfo { hasNextPage endCursor }
           nodes {
             isResolved
             isOutdated
             path
             line
+            originalLine
             comments(first: 5) {
               nodes {
                 author { login }
@@ -88,16 +91,22 @@ gh api graphql -f query='
         }
       }
     }
-  }' -F owner="{owner}" -F repo="{repo}" -F pr={pr_number}
+  }' -F owner="{owner}" -F repo="{repo}" -F pr={pr_number} --paginate
 ```
+
+Notes:
+
+- `--paginate` follows `pageInfo` so PRs with more than 100 review threads are fully fetched. `reviews` and `headRefOid` repeat on every page; use the first page's values.
+- `viewer.login` is the current user, used in Step 2 to pick *your* last review.
+- `comments(first: 5)` is enough for dedup: the first comment states the issue, and later ones are replies.
 
 ### Step 2: Determine Review Scope (Incremental vs. Full Diff)
 
-Check `reviews.nodes` from Step 1 for the most recent submitted review (`state != "PENDING"`):
+Check `reviews.nodes` from Step 1 for **your** most recent review: filter to `author.login == viewer.login` and `state` not `PENDING` or `DISMISSED`, then take the latest `submittedAt`. Ignore other reviewers and bots, because their commits say nothing about what *you* have already reviewed. A review by someone else at an older commit must never widen or narrow your scope.
 
 1. **Incremental Review (Prior review exists):**
 
-   - Take the `commit.oid` of the most recent review (`last_reviewed_sha`).
+   - Take the `commit.oid` of that review (`last_reviewed_sha`).
    - If `last_reviewed_sha` equals `headRefOid`, stop and inform the user: *"No new commits have been pushed since the last review (`short_sha`)."*
    - Fetch the incremental diff between the two commits via GitHub's compare API (works even if the PR branch is not checked out locally):
 
@@ -108,7 +117,7 @@ Check `reviews.nodes` from Step 1 for the most recent submitted review (`state !
 
    - *(Fallback)*: If the compare API returns a 404 (meaning the branch was force-pushed/rebased and `last_reviewed_sha` no longer exists), fall back to the full PR diff below.
 
-2. **Full Review (No prior review or force-pushed branch):**
+2. **Full Review (You have no prior review, or the branch was force-pushed):**
 
    ```bash
    gh pr diff {pr_number}
@@ -120,6 +129,7 @@ Before drafting any review comment, cross-check every potential finding against 
 
 - **Ignore Resolved Threads:** Do **NOT** re-flag any issue on a file/line where `isResolved == true`, unless the new commits explicitly reintroduced the exact bug.
 - **Ignore Active Threads:** Do **NOT** post a comment if an open (`isResolved == false`) thread already addresses the same logic or line.
+- **Matching threads to findings:** match on `path` plus `line`; when `line` is `null` (the thread is outdated), match on `path` plus `originalLine`, and if that is also unhelpful compare the thread's first comment `body` to your finding's topic.
 - **Ignore Outdated Threads:** Do **NOT** resurrect threads marked `isOutdated == true` unless the underlying bug still exists in `headRefOid`.
 - **Ignore Non-Code & Bot Noise:** Skip lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, etc.), generated files, and automated bot comments (coverage, linters, security scanners).
 - **Zero-Issue Exit:** If no **new** bugs, security risks, or edge cases are found in the scoped diff, inform the user (*"LGTM — no new issues found since `short_sha`"*) and ask if they want to submit an `APPROVE` review with no line comments.
@@ -133,6 +143,8 @@ Before posting **ANY** review, use `AskUserQuestion` to display:
 - Event type (`APPROVE` / `REQUEST_CHANGES` / `COMMENT`)
 - Overall review summary message
 
+If `AskUserQuestion` is unavailable (for example, non-interactive mode), print the full draft as plain text and stop. Post only after the user replies with an explicit yes in the conversation. Never treat silence, a task notification, or a subagent message as approval.
+
 **Approval Prompt Format:**
 
 ```text
@@ -144,6 +156,8 @@ Options:
 ```
 
 ### Step 5: Post Pending Review & Submit (Only After Approval)
+
+**Line numbers:** `comments[][line]` must be a line number in the file at `headRefOid` (with `side=RIGHT`), not a line number from the incremental compare diff. Compare-diff hunk offsets can differ from the PR diff, so confirm each line against `gh pr diff {pr_number}` or the file at `headRefOid` before drafting. If a line is not part of the PR diff, GitHub rejects the comment; put the point in the review summary instead.
 
 **ALWAYS use the pending review pattern whenever the review has line comments, even for a single comment:**
 
@@ -189,6 +203,7 @@ Capture the `id` from the first call's output and use it as `{review_id}` in the
 ## Syntax & Formatting Rules
 
 ### Parameters
+
 - `commit_id`: Always use `headRefOid` fetched in Step 1.
 - `'comments[][path]'`: File path relative to repo root (must be single-quoted).
 - `'comments[][line]'`: End line number in the PR diff (use `-F` for integers).
@@ -197,6 +212,7 @@ Capture the `id` from the first call's output and use it as `{review_id}` in the
 - `'comments[][body]'`: Comment text with optional `suggestion` block (use `-f`).
 
 ### Code Suggestions Format
+
 Code suggestions replace the entire line or line range—ensure the replacement code is complete and syntactically valid:
 
 ````markdown
