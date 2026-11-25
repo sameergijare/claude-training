@@ -17,7 +17,7 @@
     "internal": {
       "source": {
         "source": "github",
-        "repo": "karthikrab/claude-training",
+        "repo": "sameergijare/claude-training",
         "ref": "main",
         "path": "plugins-day8/.claude-plugin/marketplace.json"
       }
