@@ -8,7 +8,7 @@ allowed-tools: AskUserQuestion, Bash(gh:*), Bash(git:*)
 
 ## Overview
 
-Workflow for reviewing GitHub pull requests using `gh api` to create pending reviews with code suggestions, while ignoring already-reviewed commits and existing/resolved review threads. **Always use pending reviews to batch comments, even under time pressure.**
+Workflow for reviewing GitHub pull requests using `gh api` to create pending reviews with code suggestions, while ignoring already-reviewed commits and existing/resolved review threads. **Always use pending reviews to batch line comments, even under time pressure.** (The one exception is an `APPROVE`/`COMMENT` with no line comments; see Step 5.)
 
 **CRITICAL: Always get explicit user approval before posting any review comments.** Show exactly what will be posted and ask for yes/no confirmation using `AskUserQuestion`.
 
@@ -102,7 +102,7 @@ Check `reviews.nodes` from Step 1 for the most recent submitted review (`state !
    - Fetch the incremental diff between the two commits via GitHub's compare API (works even if the PR branch is not checked out locally):
 
      ```bash
-     gh api repos/:owner/:repo/compare/{last_reviewed_sha}...{head_ref_oid} \
+     gh api repos/{owner}/{repo}/compare/{last_reviewed_sha}...{head_ref_oid} \
        -H "Accept: application/vnd.github.v3.diff"
      ```
 
@@ -139,30 +139,42 @@ Before posting **ANY** review, use `AskUserQuestion` to display:
 Question: "Ready to post this review to PR #{pr_number}?"
 Header: "PR Review"
 Options:
-  - Yes, post it: Creates pending review and submits as shown
+  - Yes, post it: Posts the review exactly as shown (via a pending review if it has line comments)
   - No, let me revise: Lets you edit comments or event type before posting
 ```
 
 ### Step 5: Post Pending Review & Submit (Only After Approval)
 
-**ALWAYS use the pending review pattern, even for a single comment:**
+**ALWAYS use the pending review pattern whenever the review has line comments, even for a single comment:**
 
 ````bash
 # 1. Create PENDING review (omit event field) using headRefOid from Step 1
-gh api repos/:owner/:repo/pulls/{pr_number}/reviews   -X POST   -f commit_id="{head_ref_oid}"   -f 'comments[][path]=path/to/file.ts'   -F 'comments[][line]={line_number}'   -f 'comments[][side]=RIGHT'   -f 'comments[][body]=Comment text
+gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
+  -X POST \
+  -f commit_id="{head_ref_oid}" \
+  -f 'comments[][path]=path/to/file.ts' \
+  -F 'comments[][line]={line_number}' \
+  -f 'comments[][side]=RIGHT' \
+  -f 'comments[][body]=Comment text
 
 ```suggestion
 // suggested code here
 ```
 
-Additional explanation...'   --jq '{id, state}'
-# Returns: {"id": 123456, "state": "PENDING"}
+Additional explanation...' \
+  --jq '{id, state}'
+# Returns: {"id": 123456, "state": "PENDING"}  -> use the id as {review_id} below
 
 # 2. Submit the pending review
-gh api repos/:owner/:repo/pulls/{pr_number}/reviews/{review_id}/events   -X POST   -f event="COMMENT"   -f body="Optional overall review message"
+gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews/{review_id}/events \
+  -X POST \
+  -f event="COMMENT" \
+  -f body="Optional overall review message"
 ````
 
-*(Note: If submitting an `APPROVE` or `COMMENT` with zero line comments, skip step 1 and post directly to `repos/:owner/:repo/pulls/{pr_number}/reviews` with `-f event="APPROVE"` and `-f body="..."`.)*
+Capture the `id` from the first call's output and use it as `{review_id}` in the second call.
+
+*(Note: If submitting an `APPROVE` or `COMMENT` with zero line comments, skip step 1 and post directly to `repos/{owner}/{repo}/pulls/{pr_number}/reviews` with `-f event="APPROVE"` and `-f body="..."`.)*
 
 ---
 

@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Corrected unbalanced code fences and stray headings in the `gh api` example
 - Restored `https://cli.github.com` as the `gh` install URL
+- Clarified that the pending-review rule applies to reviews with line comments, with the zero-comment `APPROVE`/`COMMENT` path as the one exception
+- Said how to get `{review_id}` from the pending-review response
+- Used `{owner}/{repo}` placeholders consistently instead of mixing in `:owner/:repo`
+- Restored the line-continuation backslashes in the Step 5 `gh api` example
 
 ## [1.0.0] - 2025-12-02
 
