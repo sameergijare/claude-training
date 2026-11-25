@@ -34,12 +34,12 @@ gh --version
 ```text
 The GitHub CLI (gh) is required for this skill but is not installed.
 
-Please install it from: https://github.com
+Please install it from: https://cli.github.com
 
 Installation options:
 - macOS: brew install gh
 - Windows: winget install GitHub.cli
-- Linux: See https://github.com for your distro
+- Linux: See https://cli.github.com for your distro
 
 After installing, authenticate with:
   gh auth login
@@ -104,7 +104,7 @@ Check `reviews.nodes` from Step 1 for the most recent submitted review (`state !
      ```bash
      gh api repos/:owner/:repo/compare/{last_reviewed_sha}...{head_ref_oid} \
        -H "Accept: application/vnd.github.v3.diff"
-     ```bash
+     ```
 
    - *(Fallback)*: If the compare API returns a 404 (meaning the branch was force-pushed/rebased and `last_reviewed_sha` no longer exists), fall back to the full PR diff below.
 
@@ -112,7 +112,7 @@ Check `reviews.nodes` from Step 1 for the most recent submitted review (`state !
 
    ```bash
    gh pr diff {pr_number}
-   ```bash
+   ```
 
 ### Step 3: Deduplication & Filtering Rules
 
@@ -141,41 +141,26 @@ Header: "PR Review"
 Options:
   - Yes, post it: Creates pending review and submits as shown
   - No, let me revise: Lets you edit comments or event type before posting
-```text
+```
 
 ### Step 5: Post Pending Review & Submit (Only After Approval)
 
 **ALWAYS use the pending review pattern, even for a single comment:**
 
-```bash
+````bash
 # 1. Create PENDING review (omit event field) using headRefOid from Step 1
-gh api repos/:owner/:repo/pulls/{pr_number}/reviews \
-  -X POST \
-  -f commit_id="{head_ref_oid}" \
-  -f 'comments[][path]=path/to/file.ts' \
-  -F 'comments[][line]={line_number}' \
-  -f 'comments[][side]=RIGHT' \
-  -f 'comments[][body]=Comment text
+gh api repos/:owner/:repo/pulls/{pr_number}/reviews   -X POST   -f commit_id="{head_ref_oid}"   -f 'comments[][path]=path/to/file.ts'   -F 'comments[][line]={line_number}'   -f 'comments[][side]=RIGHT'   -f 'comments[][body]=Comment text
 
 ```suggestion
 // suggested code here
 ```
 
-Additional explanation...' \
-  --jq '{id, state}'
+Additional explanation...'   --jq '{id, state}'
+# Returns: {"id": 123456, "state": "PENDING"}
 
-## Returns
-
-{"id": 123456, "state": "PENDING"}
-
-## 2. Submit the pending review
-
-gh api repos/:owner/:repo/pulls/{pr_number}/reviews/{review_id}/events \
-  -X POST \
-  -f event="COMMENT" \
-  -f body="Optional overall review message"
-
-```bash
+# 2. Submit the pending review
+gh api repos/:owner/:repo/pulls/{pr_number}/reviews/{review_id}/events   -X POST   -f event="COMMENT"   -f body="Optional overall review message"
+````
 
 *(Note: If submitting an `APPROVE` or `COMMENT` with zero line comments, skip step 1 and post directly to `repos/:owner/:repo/pulls/{pr_number}/reviews` with `-f event="APPROVE"` and `-f body="..."`.)*
 
@@ -205,8 +190,8 @@ Code suggestions replace the entire line or line range—ensure the replacement 
 ````markdown
 ```suggestion
 const fixed = "like this";
-```suggestion
-````markdown
+```
+````
 
 If suggesting edits inside a Markdown file containing triple backticks, wrap the suggestion in 4 backticks (` ````suggestion `) or tildes (` ~~~suggestion `).
 

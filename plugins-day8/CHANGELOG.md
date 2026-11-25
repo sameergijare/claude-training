@@ -5,6 +5,17 @@ All notable changes to the github pr-check skill will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Rewrote the skill for incremental reviews: fetches existing review threads via GraphQL, scopes to commits since the last review, and skips resolved/active/outdated threads
+
+### Fixed
+
+- Corrected unbalanced code fences and stray headings in the `gh api` example
+- Restored `https://cli.github.com` as the `gh` install URL
+
 ## [1.0.0] - 2025-12-02
 
 ### Added
