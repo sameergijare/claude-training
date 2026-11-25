@@ -157,26 +157,38 @@ Options:
 
 ### Step 5: Post Pending Review & Submit (Only After Approval)
 
-**Line numbers:** `comments[][line]` must be a line number in the file at `headRefOid` (with `side=RIGHT`), not a line number from the incremental compare diff. Compare-diff hunk offsets can differ from the PR diff, so confirm each line against `gh pr diff {pr_number}` or the file at `headRefOid` before drafting. If a line is not part of the PR diff, GitHub rejects the comment; put the point in the review summary instead.
+**Line numbers:** `comments[].line` must be a line number in the file at `headRefOid` (with `side=RIGHT`), not a line number from the incremental compare diff. Compare-diff hunk offsets can differ from the PR diff, so confirm each line against `gh pr diff {pr_number}` or the file at `headRefOid` before drafting. If a line is not part of the PR diff, GitHub rejects the comment; put the point in the review summary instead.
 
-**ALWAYS use the pending review pattern whenever the review has line comments, even for a single comment:**
+**ALWAYS use the pending review pattern whenever the review has line comments, even for a single comment.**
+
+Send the review as a **JSON body** with `--input`. Do not build the `comments` array with repeated `-f 'comments[][...]'` flags: with more than one comment, `gh` merges the fields and GitHub rejects the request with a 422.
+
+Write the body to a temporary file (outside the repo, for example your scratchpad directory). Omit `event` so the review stays `PENDING`:
+
+````json
+{
+  "commit_id": "{head_ref_oid}",
+  "comments": [
+    {
+      "path": "path/to/file.ts",
+      "line": 42,
+      "side": "RIGHT",
+      "body": "Comment text\n\n```suggestion\n// suggested code here\n```\n\nAdditional explanation..."
+    },
+    {
+      "path": "path/to/other.ts",
+      "line": 7,
+      "side": "RIGHT",
+      "body": "Second comment"
+    }
+  ]
+}
+````
 
 ````bash
-# 1. Create PENDING review (omit event field) using headRefOid from Step 1
+# 1. Create the PENDING review
 gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
-  -X POST \
-  -f commit_id="{head_ref_oid}" \
-  -f 'comments[][path]=path/to/file.ts' \
-  -F 'comments[][line]={line_number}' \
-  -f 'comments[][side]=RIGHT' \
-  -f 'comments[][body]=Comment text
-
-```suggestion
-// suggested code here
-```
-
-Additional explanation...' \
-  --jq '{id, state}'
+  -X POST --input review.json --jq '{id, state}'
 # Returns: {"id": 123456, "state": "PENDING"}  -> use the id as {review_id} below
 
 # 2. Submit the pending review
@@ -186,7 +198,7 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews/{review_id}/events \
   -f body="Optional overall review message"
 ````
 
-Capture the `id` from the first call's output and use it as `{review_id}` in the second call.
+Capture the `id` from the first call's output and use it as `{review_id}` in the second call. In JSON, escape newlines as `\n` and double quotes as `\"` inside `body`. On Windows with Git Bash, set `MSYS_NO_PATHCONV=1` if `gh` mangles the `repos/...` path.
 
 *(Note: If submitting an `APPROVE` or `COMMENT` with zero line comments, skip step 1 and post directly to `repos/{owner}/{repo}/pulls/{pr_number}/reviews` with `-f event="APPROVE"` and `-f body="..."`.)*
 
@@ -205,11 +217,11 @@ Capture the `id` from the first call's output and use it as `{review_id}` in the
 ### Parameters
 
 - `commit_id`: Always use `headRefOid` fetched in Step 1.
-- `'comments[][path]'`: File path relative to repo root (must be single-quoted).
-- `'comments[][line]'`: End line number in the PR diff (use `-F` for integers).
-- `'comments[][start_line]'`: Start line number for multi-line suggestions (use `-F`).
-- `'comments[][side]'`: `RIGHT` for added/modified lines, `LEFT` for deleted lines.
-- `'comments[][body]'`: Comment text with optional `suggestion` block (use `-f`).
+- `comments[].path`: File path relative to repo root.
+- `comments[].line`: End line number (a JSON integer).
+- `comments[].start_line`: Start line number for multi-line suggestions (a JSON integer).
+- `comments[].side`: `RIGHT` for added/modified lines, `LEFT` for deleted lines.
+- `comments[].body`: Comment text with optional `suggestion` block.
 
 ### Code Suggestions Format
 
@@ -229,4 +241,4 @@ If suggesting edits inside a Markdown file containing triple backticks, wrap the
 - Using `gh pr view --json reviewThreads` (invalid CLI field; always use Step 1's GraphQL query)
 - Re-flagging issues already present in `reviewThreads` (`isResolved: true` or `false`)
 - Posting a review without calling `AskUserQuestion` and receiving explicit confirmation
-- Forgetting single quotes around `'comments[][path]'` or mixing up `-f` (strings) and `-F` (numbers)
+- Building `comments` with repeated `-f 'comments[][...]'` flags (fails with a 422 when there is more than one comment); use a JSON body with `--input`

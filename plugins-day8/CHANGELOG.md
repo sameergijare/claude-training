@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Said how to get `{review_id}` from the pending-review response
 - Used `{owner}/{repo}` placeholders consistently instead of mixing in `:owner/:repo`
 - Restored the line-continuation backslashes in the Step 5 `gh api` example
+- Step 5 now sends the review as a JSON body via `--input`; repeated `-f 'comments[][...]'` flags fail with a 422 for multi-comment reviews
 - Step 2 now picks the current user's own last non-pending, non-dismissed review instead of anyone's
 - Step 1 query paginates review threads (`--paginate`) and fetches `originalLine`
 - Step 3 says how to match outdated threads (`line: null`) to findings
