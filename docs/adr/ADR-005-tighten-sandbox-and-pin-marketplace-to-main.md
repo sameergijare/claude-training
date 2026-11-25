@@ -29,7 +29,7 @@ Changes to `.claude/settings.json`:
 - `permissions.allow` is `Bash(npm start)` and `Bash(npm test)` (bare forms).
 - `sandbox.network.allowedDomains` is `registry.npmjs.org`, `github.com`, `api.github.com`.
 - `sandbox.filesystem.allowWrite` is removed.
-- `extraKnownMarketplaces.internal` points at `karthikrab/claude-training`, ref `main`, path
+- `extraKnownMarketplaces.internal` points at `sameergijare/claude-training`, ref `main`, path
   `plugins-day8/.claude-plugin/marketplace.json`.
 
 `plugins-day8/.claude/settings.json` is deleted. Everything else from ADR-002 and ADR-004 is unchanged.
