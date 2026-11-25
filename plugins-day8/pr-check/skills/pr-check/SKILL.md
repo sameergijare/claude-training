@@ -195,7 +195,7 @@ Capture the `id` from the first call's output and use it as `{review_id}` in the
 ## Event Types
 
 | Event Type | When to Use | Example Situations |
-|------------|-------------|-------------------|
+| ------------ | ------------- | ------------------- |
 | `APPROVE` | Non-blocking suggestions, PR is ready to merge | Minor style improvements, optional refactoring, or clean incremental pass |
 | `REQUEST_CHANGES` | Blocking issues that must be fixed | Security vulnerabilities, bugs, breaking changes, failing tests |
 | `COMMENT` | Neutral feedback or questions | Asking for clarification, architectural observations |
