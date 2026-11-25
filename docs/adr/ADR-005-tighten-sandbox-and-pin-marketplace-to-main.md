@@ -34,7 +34,7 @@ Changes to `.claude/settings.json`:
 
 `plugins-day8/.claude/settings.json` is deleted. Everything else from ADR-002 and ADR-004 is unchanged.
 
-Gotcha: `main` on `karthikrab/claude-training` has no `plugins-day8/` until PR #4 is merged, so
+Gotcha: `main` on `sameergijare/claude-training` has no `plugins-day8/` until PR #4 is merged, so
 `pr-check@internal` will not resolve before then.
 
 ## Consequences
