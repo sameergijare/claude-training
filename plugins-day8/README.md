@@ -36,7 +36,7 @@ Install directly from the marketplace using Claude Code:
     "internal": {
       "source": {
         "source": "github",
-        "repo": "karthikrab/claude-training",
+        "repo": "sameergijare/claude-training",
         "ref": "main",
         "path": "plugins-day8/.claude-plugin/marketplace.json"
       }
@@ -67,7 +67,7 @@ cp -r plugins-day8/pr-check/skills/pr-check .claude/skills/
 Once installed, Claude will automatically use this skill when you ask it to review pull requests.
 For example:
 
-````
+````text
 You: "Review PR #123 and suggest improvements"
 Claude: *Uses pr-check skill to create pending review with batched comments*
 ````
@@ -152,7 +152,7 @@ gh api repos/:owner/:repo/pulls/123/reviews/<REVIEW_ID>/events \
 
 ## Repository Structure
 
-```
+```text
 plugins-day8/               # Plugin root
   .claude-plugin/
     marketplace.json        # Plugin marketplace definition
